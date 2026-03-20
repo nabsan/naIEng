@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#101725"/>
+      <stop offset="100%" stop-color="#15253b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="24" y="24" width="260" height="672" rx="24" fill="#0b1320" stroke="#31415e"/>
+  <text x="56" y="88" fill="#ffb86c" font-size="18" font-family="Segoe UI, Arial">PERSONAL ENGLISH OS</text>
+  <text x="56" y="148" fill="#f5efe6" font-size="44" font-weight="700" font-family="Segoe UI, Arial">English Flight Deck</text>
+  <rect x="324" y="56" width="430" height="220" rx="28" fill="#1a2435" stroke="#31415e"/>
+  <text x="360" y="104" fill="#ffb86c" font-size="16" font-family="Segoe UI, Arial">TODAY</text>
+  <text x="360" y="152" fill="#f5efe6" font-size="36" font-weight="700" font-family="Segoe UI, Arial">Three tasks, one path</text>
+  <rect x="360" y="198" width="220" height="54" rx="16" fill="#ff9b4b"/>
+  <text x="395" y="232" fill="#14181f" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Start: Conversation</text>
+  <rect x="780" y="56" width="460" height="300" rx="28" fill="#1a2435" stroke="#31415e"/>
+  <text x="816" y="104" fill="#f5efe6" font-size="30" font-weight="700" font-family="Segoe UI, Arial">Today's queue</text>
+  <rect x="816" y="138" width="390" height="64" rx="18" fill="#243148"/>
+  <rect x="816" y="214" width="390" height="64" rx="18" fill="#243148"/>
+  <rect x="816" y="290" width="390" height="64" rx="18" fill="#243148"/>
+  <text x="842" y="178" fill="#f5efe6" font-size="22" font-family="Segoe UI, Arial">Conversation  |  conv-standup-cache</text>
+  <text x="842" y="254" fill="#f5efe6" font-size="22" font-family="Segoe UI, Arial">Writing       |  write-followup-design-review</text>
+  <text x="842" y="330" fill="#f5efe6" font-size="22" font-family="Segoe UI, Arial">SRS           |  srs-standup-phrases</text>
+  <rect x="324" y="304" width="916" height="320" rx="28" fill="#1a2435" stroke="#31415e"/>
+  <text x="360" y="352" fill="#f5efe6" font-size="30" font-weight="700" font-family="Segoe UI, Arial">Focus weaknesses + provider setup</text>
+  <text x="360" y="400" fill="#9ab0c7" font-size="22" font-family="Segoe UI, Arial">OpenAI / Ollama switch, weakness tags, study stats, daily refresh</text>
+</svg>

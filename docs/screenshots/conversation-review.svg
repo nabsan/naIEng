@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#101725"/>
+      <stop offset="100%" stop-color="#1a2a42"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg2)"/>
+  <rect x="40" y="40" width="1200" height="640" rx="28" fill="#172233" stroke="#31415e"/>
+  <text x="84" y="102" fill="#ffb86c" font-size="18" font-family="Segoe UI, Arial">LATEST CONVERSATION</text>
+  <text x="84" y="156" fill="#f5efe6" font-size="28" font-weight="700" font-family="Segoe UI, Arial">Your version</text>
+  <rect x="84" y="178" width="1110" height="86" rx="18" fill="#243148"/>
+  <text x="108" y="228" fill="#dce6f2" font-size="22" font-family="Segoe UI, Arial">Today's status is that the rollout is almost ready...</text>
+  <text x="84" y="320" fill="#f5efe6" font-size="28" font-weight="700" font-family="Segoe UI, Arial">Improved version</text>
+  <rect x="84" y="342" width="1110" height="86" rx="18" fill="#243148"/>
+  <text x="108" y="392" fill="#dce6f2" font-size="22" font-family="Segoe UI, Arial">My blocker is one inconsistent staging result. Next, I will verify the logs...</text>
+  <rect x="84" y="456" width="300" height="52" rx="16" fill="#ff9b4b"/>
+  <text x="120" y="489" fill="#14181f" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Pick selected text to Vocab</text>
+  <text x="84" y="560" fill="#f5efe6" font-size="24" font-weight="700" font-family="Segoe UI, Arial">Summary / Priority fix / Retry prompt</text>
+  <text x="84" y="604" fill="#9ab0c7" font-size="21" font-family="Segoe UI, Arial">Conversation review keeps the learner's draft and the improved example side by side.</text>
+</svg>

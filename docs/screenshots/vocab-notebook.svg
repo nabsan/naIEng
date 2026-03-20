@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#101725"/>
+      <stop offset="100%" stop-color="#1b2940"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg4)"/>
+  <rect x="40" y="40" width="720" height="640" rx="28" fill="#172233" stroke="#31415e"/>
+  <text x="84" y="100" fill="#ffb86c" font-size="18" font-family="Segoe UI, Arial">VOCAB NOTEBOOK</text>
+  <text x="84" y="150" fill="#f5efe6" font-size="30" font-weight="700" font-family="Segoe UI, Arial">Save unclear expressions for spaced review</text>
+  <rect x="84" y="188" width="620" height="58" rx="18" fill="#243148"/>
+  <text x="106" y="224" fill="#9ab0c7" font-size="22" font-family="Segoe UI, Arial">Expression: one blocker</text>
+  <rect x="84" y="272" width="620" height="58" rx="18" fill="#243148"/>
+  <text x="106" y="308" fill="#9ab0c7" font-size="22" font-family="Segoe UI, Arial">Meaning: current issue that blocks progress</text>
+  <rect x="84" y="358" width="620" height="110" rx="18" fill="#243148"/>
+  <text x="106" y="406" fill="#9ab0c7" font-size="22" font-family="Segoe UI, Arial">Note + example are editable before saving.</text>
+  <rect x="84" y="500" width="220" height="56" rx="16" fill="#ff9b4b"/>
+  <text x="122" y="536" fill="#14181f" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Save vocab note</text>
+  <rect x="790" y="40" width="450" height="640" rx="28" fill="#172233" stroke="#31415e"/>
+  <text x="830" y="100" fill="#f5efe6" font-size="28" font-weight="700" font-family="Segoe UI, Arial">Saved expressions</text>
+  <rect x="830" y="140" width="360" height="180" rx="20" fill="#243148"/>
+  <text x="854" y="184" fill="#f5efe6" font-size="24" font-weight="700" font-family="Segoe UI, Arial">trade-off</text>
+  <text x="854" y="224" fill="#9ab0c7" font-size="22" font-family="Segoe UI, Arial">Retention: 32%</text>
+  <rect x="1024" y="164" width="140" height="40" rx="12" fill="#32445f"/>
+  <text x="1050" y="190" fill="#f5efe6" font-size="18" font-family="Segoe UI, Arial">Reviewed</text>
+  <rect x="1024" y="214" width="140" height="40" rx="12" fill="#4a3337"/>
+  <text x="1042" y="240" fill="#f5efe6" font-size="18" font-family="Segoe UI, Arial">Still hard</text>
+  <rect x="1024" y="264" width="140" height="40" rx="12" fill="#304a40"/>
+  <text x="1060" y="290" fill="#f5efe6" font-size="18" font-family="Segoe UI, Arial">Got it</text>
+</svg>

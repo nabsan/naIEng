@@ -1,0 +1,11 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/Cargo.lock
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+naIEng.config.json
+.env
+.env.*

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
-use chrono::Utc;
+use chrono::{Duration as ChronoDuration, Utc};
 use reqwest::blocking::Client;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -70,6 +70,16 @@ struct ScenarioSeed {
     prompt: &'static str,
     scenario_tag: &'static str,
     estimated_minutes: i64,
+}
+
+#[derive(Debug, Clone)]
+struct WordSeed {
+    key: &'static str,
+    word: &'static str,
+    meaning_ja: &'static str,
+    example: &'static str,
+    category: &'static str,
+    office_priority: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -148,6 +158,35 @@ struct ScenarioProgressRecord {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct WordCardRecord {
+    id: i64,
+    key: String,
+    word: String,
+    meaning_ja: String,
+    example: String,
+    category: String,
+    office_priority: i64,
+    mastery_score: f64,
+    pass_count: i64,
+    fail_count: i64,
+    streak: i64,
+    last_result: String,
+    next_due_at: Option<String>,
+    is_mastered: bool,
+    choices: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WordTrainingPayload {
+    queue: Vec<WordCardRecord>,
+    library: Vec<WordCardRecord>,
+    active_count: i64,
+    mastered_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct VocabNoteRecord {
     id: i64,
     expression: String,
@@ -201,6 +240,13 @@ struct AddVocabNotePayload {
 struct ReviewVocabPayload {
     note_id: i64,
     outcome: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WordAttemptPayload {
+    word_id: i64,
+    result: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -715,6 +761,81 @@ fn scenario_catalog() -> &'static [ScenarioSeed] {
     ]
 }
 
+fn word_catalog() -> &'static [WordSeed] {
+    &[
+        WordSeed { key: "deadline", word: "deadline", meaning_ja: "締め切り", example: "We need to move the deadline by two days.", category: "office", office_priority: 5 },
+        WordSeed { key: "schedule", word: "schedule", meaning_ja: "予定、日程", example: "The delivery schedule changed after the review.", category: "office", office_priority: 5 },
+        WordSeed { key: "priority", word: "priority", meaning_ja: "優先事項", example: "This bug is our top priority today.", category: "office", office_priority: 5 },
+        WordSeed { key: "proposal", word: "proposal", meaning_ja: "提案", example: "I shared a proposal for the API design.", category: "office", office_priority: 5 },
+        WordSeed { key: "approve", word: "approve", meaning_ja: "承認する", example: "The manager approved the revised plan.", category: "office", office_priority: 5 },
+        WordSeed { key: "confirm", word: "confirm", meaning_ja: "確認する", example: "Please confirm the owner of the next step.", category: "office", office_priority: 5 },
+        WordSeed { key: "update", word: "update", meaning_ja: "更新、進捗報告", example: "I will send an update this afternoon.", category: "office", office_priority: 5 },
+        WordSeed { key: "progress", word: "progress", meaning_ja: "進捗", example: "We made good progress on the rollout.", category: "office", office_priority: 5 },
+        WordSeed { key: "blocker", word: "blocker", meaning_ja: "進行を止める問題", example: "My blocker is the staging database issue.", category: "office", office_priority: 5 },
+        WordSeed { key: "owner", word: "owner", meaning_ja: "担当者", example: "We still need an owner for this task.", category: "office", office_priority: 5 },
+        WordSeed { key: "outcome", word: "outcome", meaning_ja: "結果", example: "The outcome was better than expected.", category: "office", office_priority: 4 },
+        WordSeed { key: "followup", word: "follow-up", meaning_ja: "フォローアップ", example: "I sent a follow-up email after the meeting.", category: "office", office_priority: 4 },
+        WordSeed { key: "clarify", word: "clarify", meaning_ja: "明確にする", example: "Could you clarify the requirement?", category: "office", office_priority: 5 },
+        WordSeed { key: "requirement", word: "requirement", meaning_ja: "要件", example: "The requirement is still too broad.", category: "office", office_priority: 5 },
+        WordSeed { key: "decision", word: "decision", meaning_ja: "決定", example: "We need a decision by Friday.", category: "office", office_priority: 5 },
+        WordSeed { key: "concern", word: "concern", meaning_ja: "懸念", example: "My main concern is operational risk.", category: "office", office_priority: 5 },
+        WordSeed { key: "suggest", word: "suggest", meaning_ja: "提案する", example: "I suggest reducing the scope for now.", category: "office", office_priority: 5 },
+        WordSeed { key: "delay", word: "delay", meaning_ja: "遅延", example: "The delay came from test failures.", category: "office", office_priority: 5 },
+        WordSeed { key: "issue", word: "issue", meaning_ja: "問題", example: "We found an issue in the authentication flow.", category: "office", office_priority: 5 },
+        WordSeed { key: "resolve", word: "resolve", meaning_ja: "解決する", example: "We resolved the issue before release.", category: "office", office_priority: 5 },
+        WordSeed { key: "review", word: "review", meaning_ja: "レビュー", example: "The review raised a few useful points.", category: "office", office_priority: 5 },
+        WordSeed { key: "feedback", word: "feedback", meaning_ja: "フィードバック", example: "Thanks for the clear feedback.", category: "office", office_priority: 5 },
+        WordSeed { key: "alignment", word: "alignment", meaning_ja: "認識合わせ", example: "We need alignment before implementation starts.", category: "office", office_priority: 5 },
+        WordSeed { key: "milestone", word: "milestone", meaning_ja: "マイルストーン", example: "The next milestone is the beta release.", category: "office", office_priority: 4 },
+        WordSeed { key: "resource", word: "resource", meaning_ja: "リソース", example: "We do not have enough resources this sprint.", category: "office", office_priority: 4 },
+        WordSeed { key: "budget", word: "budget", meaning_ja: "予算", example: "The budget does not cover an additional vendor.", category: "office", office_priority: 4 },
+        WordSeed { key: "policy", word: "policy", meaning_ja: "方針、規程", example: "This change must follow company policy.", category: "office", office_priority: 3 },
+        WordSeed { key: "request", word: "request", meaning_ja: "依頼", example: "I have one request before we proceed.", category: "office", office_priority: 5 },
+        WordSeed { key: "respond", word: "respond", meaning_ja: "対応する、返答する", example: "We need to respond by tomorrow.", category: "office", office_priority: 4 },
+        WordSeed { key: "assign", word: "assign", meaning_ja: "割り当てる", example: "Let's assign one engineer to the fix.", category: "office", office_priority: 4 },
+        WordSeed { key: "deliver", word: "deliver", meaning_ja: "納品する、届ける", example: "Can we still deliver this by Monday?", category: "office", office_priority: 4 },
+        WordSeed { key: "available", word: "available", meaning_ja: "利用可能な、空いている", example: "I am available after 3 p.m.", category: "office", office_priority: 4 },
+        WordSeed { key: "achieve", word: "achieve", meaning_ja: "達成する", example: "We achieved the latency target.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "improve", word: "improve", meaning_ja: "改善する", example: "The new cache strategy improved response time.", category: "toeic", office_priority: 4 },
+        WordSeed { key: "maintain", word: "maintain", meaning_ja: "維持する", example: "We need to maintain service quality.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "reduce", word: "reduce", meaning_ja: "減らす", example: "This option reduces operational risk.", category: "toeic", office_priority: 4 },
+        WordSeed { key: "increase", word: "increase", meaning_ja: "増やす", example: "The new load increased server costs.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "impact", word: "impact", meaning_ja: "影響", example: "The customer impact is currently limited.", category: "toeic", office_priority: 5 },
+        WordSeed { key: "recommend", word: "recommend", meaning_ja: "推奨する", example: "I recommend delaying the release by one day.", category: "office", office_priority: 5 },
+        WordSeed { key: "consider", word: "consider", meaning_ja: "検討する", example: "We should consider a rollback plan.", category: "toeic", office_priority: 4 },
+        WordSeed { key: "estimate", word: "estimate", meaning_ja: "見積もる", example: "My estimate changed after testing.", category: "office", office_priority: 5 },
+        WordSeed { key: "launch", word: "launch", meaning_ja: "開始する、公開する", example: "We plan to launch next month.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "revenue", word: "revenue", meaning_ja: "収益", example: "The feature could improve revenue next quarter.", category: "toeic", office_priority: 2 },
+        WordSeed { key: "contract", word: "contract", meaning_ja: "契約", example: "The contract review is still pending.", category: "toeic", office_priority: 2 },
+        WordSeed { key: "invoice", word: "invoice", meaning_ja: "請求書", example: "The invoice was sent this morning.", category: "toeic", office_priority: 2 },
+        WordSeed { key: "purchase", word: "purchase", meaning_ja: "購入する", example: "We need approval before purchase.", category: "toeic", office_priority: 2 },
+        WordSeed { key: "shipment", word: "shipment", meaning_ja: "出荷", example: "The shipment was delayed by weather.", category: "toeic", office_priority: 1 },
+        WordSeed { key: "inventory", word: "inventory", meaning_ja: "在庫", example: "The inventory data is out of date.", category: "toeic", office_priority: 1 },
+        WordSeed { key: "meeting", word: "meeting", meaning_ja: "会議", example: "The meeting starts at 10 a.m.", category: "office", office_priority: 5 },
+        WordSeed { key: "agenda", word: "agenda", meaning_ja: "議題", example: "Please check the agenda before the call.", category: "office", office_priority: 4 },
+        WordSeed { key: "attend", word: "attend", meaning_ja: "出席する", example: "Can you attend the review tomorrow?", category: "toeic", office_priority: 3 },
+        WordSeed { key: "summary", word: "summary", meaning_ja: "要約", example: "I posted a summary after the meeting.", category: "office", office_priority: 5 },
+        WordSeed { key: "brief", word: "brief", meaning_ja: "簡潔な", example: "Please keep the update brief.", category: "office", office_priority: 4 },
+        WordSeed { key: "concise", word: "concise", meaning_ja: "簡潔な", example: "Your email was clear and concise.", category: "office", office_priority: 4 },
+        WordSeed { key: "effective", word: "effective", meaning_ja: "効果的な", example: "We need an effective mitigation plan.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "efficient", word: "efficient", meaning_ja: "効率的な", example: "This is a more efficient process.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "vendor", word: "vendor", meaning_ja: "取引先業者", example: "The vendor asked for more details.", category: "toeic", office_priority: 2 },
+        WordSeed { key: "client", word: "client", meaning_ja: "顧客", example: "The client needs an update today.", category: "office", office_priority: 3 },
+        WordSeed { key: "stakeholder", word: "stakeholder", meaning_ja: "関係者", example: "We shared the risk with stakeholders.", category: "office", office_priority: 4 },
+        WordSeed { key: "internal", word: "internal", meaning_ja: "社内の", example: "This is for internal use only.", category: "office", office_priority: 3 },
+        WordSeed { key: "external", word: "external", meaning_ja: "社外の", example: "External communication will go out tomorrow.", category: "office", office_priority: 3 },
+        WordSeed { key: "document", word: "document", meaning_ja: "文書、記録する", example: "Please document the decision.", category: "office", office_priority: 4 },
+        WordSeed { key: "analysis", word: "analysis", meaning_ja: "分析", example: "We need more analysis before release.", category: "toeic", office_priority: 3 },
+        WordSeed { key: "strategy", word: "strategy", meaning_ja: "戦略", example: "Our rollout strategy has changed.", category: "office", office_priority: 4 },
+        WordSeed { key: "launchplan", word: "rollout", meaning_ja: "段階的展開", example: "The rollout will start with internal users.", category: "office", office_priority: 5 },
+        WordSeed { key: "mitigation", word: "mitigation", meaning_ja: "緩和策", example: "We need a mitigation for the current risk.", category: "office", office_priority: 5 },
+        WordSeed { key: "dependency", word: "dependency", meaning_ja: "依存関係", example: "The release depends on an external dependency.", category: "office", office_priority: 4 },
+        WordSeed { key: "rollback", word: "rollback", meaning_ja: "ロールバック", example: "We prepared a rollback plan just in case.", category: "office", office_priority: 5 },
+        WordSeed { key: "incident", word: "incident", meaning_ja: "障害、インシデント", example: "The incident affected only staging users.", category: "office", office_priority: 5 },
+        WordSeed { key: "recovery", word: "recovery", meaning_ja: "復旧", example: "Recovery took about twenty minutes.", category: "office", office_priority: 4 },
+    ]
+}
+
 fn exe_dir() -> PathBuf {
     std::env::current_exe()
         .ok()
@@ -960,6 +1081,28 @@ fn initialize_db(conn: &Connection) -> Result<(), AppError> {
             created_at TEXT NOT NULL,
             last_reviewed_at TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS word_card_master (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_key TEXT NOT NULL UNIQUE,
+            word TEXT NOT NULL,
+            meaning_ja TEXT NOT NULL,
+            example TEXT NOT NULL,
+            category TEXT NOT NULL,
+            office_priority INTEGER NOT NULL DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS word_card_progress (
+            word_id INTEGER PRIMARY KEY,
+            mastery_score REAL NOT NULL DEFAULT 0.12,
+            pass_count INTEGER NOT NULL DEFAULT 0,
+            fail_count INTEGER NOT NULL DEFAULT 0,
+            streak INTEGER NOT NULL DEFAULT 0,
+            last_result TEXT NOT NULL DEFAULT 'new',
+            last_seen_at TEXT,
+            next_due_at TEXT,
+            is_mastered INTEGER NOT NULL DEFAULT 0
+        );
         ",
     )?;
 
@@ -1031,6 +1174,7 @@ fn initialize_db(conn: &Connection) -> Result<(), AppError> {
     )?;
 
     seed_scenario_catalog(conn)?;
+    seed_word_catalog(conn)?;
     seed_default_vocab_notes(conn)?;
     backfill_daily_tasks(conn)?;
     seed_today_if_needed(conn)?;
@@ -1185,6 +1329,107 @@ fn seed_default_vocab_notes(conn: &Connection) -> Result<(), AppError> {
         "The trade-off is faster delivery but higher operational risk.",
     )?;
     Ok(())
+}
+
+fn seed_word_catalog(conn: &Connection) -> Result<(), AppError> {
+    for card in word_catalog() {
+        conn.execute(
+            "INSERT INTO word_card_master (card_key, word, meaning_ja, example, category, office_priority)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(card_key) DO UPDATE SET
+                word = excluded.word,
+                meaning_ja = excluded.meaning_ja,
+                example = excluded.example,
+                category = excluded.category,
+                office_priority = excluded.office_priority",
+            params![
+                card.key,
+                card.word,
+                card.meaning_ja,
+                card.example,
+                card.category,
+                card.office_priority
+            ],
+        )?;
+    }
+
+    conn.execute(
+        "INSERT INTO word_card_progress (word_id)
+         SELECT id
+         FROM word_card_master
+         WHERE id NOT IN (SELECT word_id FROM word_card_progress)",
+        [],
+    )?;
+
+    Ok(())
+}
+
+fn build_word_choices(word_id: i64, correct_word: &str) -> Vec<String> {
+    let all_words: Vec<&str> = word_catalog().iter().map(|item| item.word).collect();
+    let mut distractors = Vec::new();
+    let start = (word_id as usize) % all_words.len();
+    for offset in 0..all_words.len() {
+        let candidate = all_words[(start + offset) % all_words.len()];
+        if candidate != correct_word && !distractors.iter().any(|item| item == candidate) {
+            distractors.push(candidate.to_string());
+        }
+        if distractors.len() == 3 {
+            break;
+        }
+    }
+
+    let mut choices = vec![correct_word.to_string()];
+    choices.extend(distractors);
+    let shift = (word_id as usize) % choices.len();
+    choices.rotate_left(shift);
+    choices
+}
+
+fn map_word_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<WordCardRecord> {
+    let id: i64 = row.get(0)?;
+    let word: String = row.get(2)?;
+    Ok(WordCardRecord {
+        id,
+        key: row.get(1)?,
+        word: word.clone(),
+        meaning_ja: row.get(3)?,
+        example: row.get(4)?,
+        category: row.get(5)?,
+        office_priority: row.get(6)?,
+        mastery_score: row.get(7)?,
+        pass_count: row.get(8)?,
+        fail_count: row.get(9)?,
+        streak: row.get(10)?,
+        last_result: row.get(11)?,
+        next_due_at: row.get(12)?,
+        is_mastered: row.get::<_, i64>(13)? == 1,
+        choices: build_word_choices(id, &word),
+    })
+}
+
+fn mastery_after_attempt(current: f64, result: &str, streak: i64) -> f64 {
+    let next = match result {
+        "pass" => current + 0.14 + (streak as f64 * 0.02).min(0.08),
+        "fail" => current * 0.72,
+        "timeout" => current * 0.58,
+        _ => current,
+    };
+    next.clamp(0.0, 1.0)
+}
+
+fn next_due_after_attempt(now: chrono::DateTime<Utc>, mastery: f64, result: &str) -> String {
+    let next = match result {
+        "pass" if mastery >= 0.92 => now + ChronoDuration::days(3650),
+        "pass" if mastery >= 0.78 => now + ChronoDuration::days(7),
+        "pass" if mastery >= 0.62 => now + ChronoDuration::days(3),
+        "pass" if mastery >= 0.45 => now + ChronoDuration::hours(18),
+        "pass" if mastery >= 0.28 => now + ChronoDuration::hours(4),
+        "pass" => now + ChronoDuration::minutes(25),
+        "fail" => now + ChronoDuration::minutes(8),
+        "timeout" => now + ChronoDuration::minutes(4),
+        _ => now + ChronoDuration::minutes(15),
+    };
+    next.to_rfc3339()
 }
 
 fn seed_today_if_needed(conn: &Connection) -> Result<(), AppError> {
@@ -2145,6 +2390,129 @@ fn list_vocab_notes(state: tauri::State<AppState>) -> Result<Vec<VocabNoteRecord
 }
 
 #[tauri::command]
+fn get_word_training_payload(state: tauri::State<AppState>) -> Result<WordTrainingPayload, String> {
+    let conn = open_database(&state).map_err(|err| err.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    let sql = "
+        SELECT
+            m.id,
+            m.card_key,
+            m.word,
+            m.meaning_ja,
+            m.example,
+            m.category,
+            m.office_priority,
+            p.mastery_score,
+            p.pass_count,
+            p.fail_count,
+            p.streak,
+            p.last_result,
+            p.next_due_at,
+            p.is_mastered
+        FROM word_card_master m
+        JOIN word_card_progress p ON p.word_id = m.id
+        ORDER BY p.is_mastered ASC, p.mastery_score ASC, m.office_priority DESC, COALESCE(p.next_due_at, '') ASC, m.word ASC";
+
+    let mut stmt = conn.prepare(sql).map_err(|err| err.to_string())?;
+    let all_cards = stmt
+        .query_map([], map_word_row)
+        .map_err(|err| err.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| err.to_string())?;
+
+    let queue = all_cards
+        .iter()
+        .filter(|card| {
+            !card.is_mastered
+                && card
+                    .next_due_at
+                    .as_ref()
+                    .map(|due| due <= &now)
+                    .unwrap_or(true)
+        })
+        .take(8)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let fallback_queue = if queue.is_empty() {
+        all_cards
+            .iter()
+            .filter(|card| !card.is_mastered)
+            .take(8)
+            .cloned()
+            .collect::<Vec<_>>()
+    } else {
+        queue
+    };
+
+    let active_count = all_cards.iter().filter(|card| !card.is_mastered).count() as i64;
+    let mastered_count = all_cards.iter().filter(|card| card.is_mastered).count() as i64;
+
+    Ok(WordTrainingPayload {
+        queue: fallback_queue,
+        library: all_cards.into_iter().take(40).collect(),
+        active_count,
+        mastered_count,
+    })
+}
+
+#[tauri::command]
+fn submit_word_attempt(
+    state: tauri::State<AppState>,
+    payload: WordAttemptPayload,
+) -> Result<WordTrainingPayload, String> {
+    let conn = open_database(&state).map_err(|err| err.to_string())?;
+    let (current_mastery, pass_count, fail_count, streak): (f64, i64, i64, i64) = conn
+        .query_row(
+            "SELECT mastery_score, pass_count, fail_count, streak
+             FROM word_card_progress
+             WHERE word_id = ?1",
+            params![payload.word_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .map_err(|err| err.to_string())?;
+
+    let next_streak = if payload.result == "pass" { streak + 1 } else { 0 };
+    let next_mastery = mastery_after_attempt(current_mastery, &payload.result, streak);
+    let next_pass_count = if payload.result == "pass" { pass_count + 1 } else { pass_count };
+    let next_fail_count = if payload.result == "pass" {
+        fail_count
+    } else {
+        fail_count + 1
+    };
+    let is_mastered = next_mastery >= 0.93 && next_pass_count >= 5 && next_streak >= 3;
+    let now = Utc::now();
+    let next_due_at = next_due_after_attempt(now, next_mastery, &payload.result);
+
+    conn.execute(
+        "UPDATE word_card_progress
+         SET mastery_score = ?1,
+             pass_count = ?2,
+             fail_count = ?3,
+             streak = ?4,
+             last_result = ?5,
+             last_seen_at = ?6,
+             next_due_at = ?7,
+             is_mastered = ?8
+         WHERE word_id = ?9",
+        params![
+            next_mastery,
+            next_pass_count,
+            next_fail_count,
+            next_streak,
+            payload.result,
+            now.to_rfc3339(),
+            next_due_at,
+            if is_mastered { 1 } else { 0 },
+            payload.word_id
+        ],
+    )
+    .map_err(|err| err.to_string())?;
+
+    get_word_training_payload(state)
+}
+
+#[tauri::command]
 fn review_vocab_note(
     state: tauri::State<AppState>,
     payload: ReviewVocabPayload,
@@ -2532,6 +2900,8 @@ pub fn run() {
             list_scenario_progress,
             add_vocab_note,
             list_vocab_notes,
+            get_word_training_payload,
+            submit_word_attempt,
             review_vocab_note,
             delete_vocab_note,
             submit_conversation_session,

@@ -167,6 +167,53 @@ input {
   flex-wrap: wrap;
 }
 
+.trainer-stats {
+  margin: 16px 0;
+}
+
+.trainer-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.trainer-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+.word-feedback {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+
+.word-feedback.correct {
+  background: rgba(142, 209, 166, 0.14);
+  color: #dff7e8;
+}
+
+.word-feedback.incorrect {
+  background: rgba(240, 153, 153, 0.14);
+  color: #ffe5e5;
+}
+
+.panel-hint {
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .stack {
   display: grid;
   gap: 12px;
@@ -247,6 +294,33 @@ input {
 
 .field span {
   color: var(--muted);
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.label-feedback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.label-feedback.correct {
+  background: rgba(142, 209, 166, 0.18);
+  color: #dff7e8;
+}
+
+.label-feedback.incorrect {
+  background: rgba(240, 153, 153, 0.18);
+  color: #ffe5e5;
 }
 
 .text-input,

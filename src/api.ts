@@ -10,6 +10,8 @@ import type {
   ScenarioProgressRecord,
   VocabNoteRecord,
   VocabReviewOutcome,
+  WordAttemptResult,
+  WordTrainingPayload,
   WritingEvaluation,
   WritingSessionRecord,
   WritingSubmission
@@ -26,6 +28,7 @@ const browserFallback: {
   conversationSessions: ConversationSessionRecord[];
   sessions: WritingSessionRecord[];
   vocabNotes: VocabNoteRecord[];
+  wordTraining: WordTrainingPayload;
 } = {
   config: {
     provider: "openai",
@@ -99,7 +102,31 @@ const browserFallback: {
       createdAt: new Date().toISOString(),
       lastReviewedAt: null
     }
-  ]
+  ],
+  wordTraining: {
+    queue: [
+      {
+        id: 1,
+        key: "deadline",
+        word: "deadline",
+        meaningJa: "締め切り",
+        example: "We need to move the deadline by two days.",
+        category: "office",
+        officePriority: 5,
+        masteryScore: 0.18,
+        passCount: 0,
+        failCount: 0,
+        streak: 0,
+        lastResult: "new",
+        nextDueAt: null,
+        isMastered: false,
+        choices: ["proposal", "deadline", "vendor", "summary"]
+      }
+    ],
+    library: [],
+    activeCount: 1,
+    masteredCount: 0
+  }
 };
 
 const evalWritingFallback = (submission: WritingSubmission): WritingEvaluation => {
@@ -333,6 +360,24 @@ export async function reviewVocabNote(
 export async function deleteVocabNote(noteId: number): Promise<void> {
   return invokeOrFallback("delete_vocab_note", { noteId }, () => {
     browserFallback.vocabNotes = browserFallback.vocabNotes.filter((item) => item.id !== noteId);
+  });
+}
+
+export async function loadWordTraining(): Promise<WordTrainingPayload> {
+  return invokeOrFallback("get_word_training_payload", {}, () => browserFallback.wordTraining);
+}
+
+export async function submitWordAttempt(
+  wordId: number,
+  result: WordAttemptResult
+): Promise<WordTrainingPayload> {
+  return invokeOrFallback("submit_word_attempt", { payload: { wordId, result } }, () => {
+    const nextQueue = browserFallback.wordTraining.queue.filter((item) => item.id !== wordId);
+    browserFallback.wordTraining = {
+      ...browserFallback.wordTraining,
+      queue: nextQueue
+    };
+    return browserFallback.wordTraining;
   });
 }
 

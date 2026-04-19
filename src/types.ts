@@ -127,6 +127,33 @@ export interface AddVocabNoteInput {
 
 export type VocabReviewOutcome = "reviewed" | "still_hard" | "got_it";
 
+export interface WordCardRecord {
+  id: number;
+  key: string;
+  word: string;
+  meaningJa: string;
+  example: string;
+  category: string;
+  officePriority: number;
+  masteryScore: number;
+  passCount: number;
+  failCount: number;
+  streak: number;
+  lastResult: string;
+  nextDueAt?: string | null;
+  isMastered: boolean;
+  choices: string[];
+}
+
+export interface WordTrainingPayload {
+  queue: WordCardRecord[];
+  library: WordCardRecord[];
+  activeCount: number;
+  masteredCount: number;
+}
+
+export type WordAttemptResult = "pass" | "fail" | "timeout";
+
 export interface HomePayload {
   tasks: DailyTask[];
   weaknesses: WeaknessTag[];

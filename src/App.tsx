@@ -8,10 +8,12 @@ import {
   loadScenarioProgress,
   loadVocabNotes,
   loadWritingHistory,
+  loadWordTraining,
   listOllamaModels,
   refreshDailyTasks,
   reviewVocabNote,
   saveAppConfig,
+  submitWordAttempt,
   submitConversation,
   submitWriting
 } from "./api";
@@ -26,10 +28,19 @@ import type {
   ScenarioProgressRecord,
   VocabNoteRecord,
   VocabReviewOutcome,
+  WordAttemptResult,
+  WordCardRecord,
+  WordTrainingPayload,
   WritingSessionRecord
 } from "./types";
 
 type Screen = "home" | "conversation" | "writing" | "review" | "vocab";
+
+type WordFeedbackState = {
+  result: WordAttemptResult;
+  correctWord: string;
+  meaningJa: string;
+} | null;
 
 const emptyHome: HomePayload = {
   tasks: [],
@@ -43,6 +54,17 @@ const emptyHome: HomePayload = {
   }
 };
 
+const emptyWordTraining: WordTrainingPayload = {
+  queue: [],
+  library: [],
+  activeCount: 0,
+  masteredCount: 0
+};
+
+function normalizeWordAnswer(value: string) {
+  return value.toLowerCase().replace(/[\s-]+/g, "");
+}
+
 export function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [home, setHome] = useState<HomePayload>(emptyHome);
@@ -50,6 +72,7 @@ export function App() {
   const [conversationHistory, setConversationHistory] = useState<ConversationSessionRecord[]>([]);
   const [scenarioProgress, setScenarioProgress] = useState<ScenarioProgressRecord[]>([]);
   const [vocabNotes, setVocabNotes] = useState<VocabNoteRecord[]>([]);
+  const [wordTraining, setWordTraining] = useState<WordTrainingPayload>(emptyWordTraining);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [ollamaModels, setOllamaModels] = useState<OllamaModelInfo[]>([]);
   const [configDraft, setConfigDraft] = useState<AppConfigInput>({
@@ -79,19 +102,24 @@ export function App() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [savingVocab, setSavingVocab] = useState(false);
   const [refreshingDaily, setRefreshingDaily] = useState(false);
+  const [submittingWord, setSubmittingWord] = useState(false);
   const [vocabSort, setVocabSort] = useState<"weakest" | "strongest" | "recent">("weakest");
+  const [wordTyping, setWordTyping] = useState("");
+  const [wordTimeLeft, setWordTimeLeft] = useState(12);
+  const [wordFeedback, setWordFeedback] = useState<WordFeedbackState>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const [homePayload, recentHistory, recentConversation, progress, notes, appConfig, localModels] = await Promise.all([
+      const [homePayload, recentHistory, recentConversation, progress, notes, training, appConfig, localModels] = await Promise.all([
         loadHome(),
         loadWritingHistory(),
         loadConversationHistory(),
         loadScenarioProgress(),
         loadVocabNotes(),
+        loadWordTraining(),
         loadAppConfig(),
         listOllamaModels()
       ]);
@@ -100,6 +128,7 @@ export function App() {
       setConversationHistory(recentConversation);
       setScenarioProgress(progress);
       setVocabNotes(notes);
+      setWordTraining(training);
       setConfig(appConfig);
       setOllamaModels(localModels);
       setConfigDraft((current) => ({
@@ -214,6 +243,45 @@ export function App() {
     }
   }
 
+  async function handleWordAttempt(
+    forcedResult?: WordAttemptResult,
+    pickedChoice?: string
+  ) {
+    if (!currentWord) {
+      return;
+    }
+
+    let result = forcedResult;
+    if (!result) {
+      const typedOk =
+        normalizeWordAnswer(wordTyping) === normalizeWordAnswer(currentWord.word);
+      const pickedOk =
+        normalizeWordAnswer(pickedChoice ?? "") === normalizeWordAnswer(currentWord.word);
+      result = typedOk || pickedOk ? "pass" : "fail";
+    }
+
+    setSubmittingWord(true);
+    setError(null);
+    try {
+      const nextTraining = await submitWordAttempt(currentWord.id, result);
+      setWordFeedback({
+        result,
+        correctWord: currentWord.word,
+        meaningJa: currentWord.meaningJa
+      });
+      window.setTimeout(() => {
+        setWordTraining(nextTraining);
+        setWordTyping("");
+        setWordTimeLeft(12);
+        setWordFeedback(null);
+      }, 900);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit word attempt.");
+    } finally {
+      setSubmittingWord(false);
+    }
+  }
+
   const sortedVocabNotes = useMemo(() => {
     const items = [...vocabNotes];
     if (vocabSort === "strongest") {
@@ -229,9 +297,36 @@ export function App() {
     return items.sort((a, b) => a.retentionScore - b.retentionScore);
   }, [vocabNotes, vocabSort]);
 
+  const currentWord = useMemo<WordCardRecord | null>(
+    () => wordTraining.queue[0] ?? null,
+    [wordTraining.queue]
+  );
+
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => {
+    setWordTyping("");
+    setWordTimeLeft(12);
+  }, [currentWord?.id]);
+
+  useEffect(() => {
+    if (screen !== "vocab" || !currentWord || submittingWord) {
+      return;
+    }
+    if (wordFeedback) {
+      return;
+    }
+    if (wordTimeLeft <= 0) {
+      void handleWordAttempt("timeout");
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setWordTimeLeft((current) => current - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [screen, currentWord, wordTimeLeft, submittingWord, wordFeedback]);
 
   const nextTaskLabel = useMemo(() => {
     const nextTask = home.tasks.find((task) => task.status === "pending");
@@ -847,7 +942,160 @@ export function App() {
         ) : null}
 
         {!loading && screen === "vocab" ? (
-          <section className="grid writing-layout">
+          <section className="grid">
+            <article className="panel">
+              <p className="eyebrow">Word trainer</p>
+              <h2>Office words with spaced repetition</h2>
+              <p>
+                Focus on office-heavy vocabulary first. Answer by typing or by
+                selecting a choice. If time runs out, the app records that and
+                schedules the word again sooner.
+              </p>
+              <div className="stats trainer-stats">
+                <div>
+                  <span>Active words</span>
+                  <strong>{wordTraining.activeCount}</strong>
+                </div>
+                <div>
+                  <span>Mastered</span>
+                  <strong>{wordTraining.masteredCount}</strong>
+                </div>
+              </div>
+              {currentWord ? (
+                <div className="trainer-card">
+                  <div className="trainer-topline">
+                    <strong>{currentWord.category}</strong>
+                    <span className="score-pill">{wordTimeLeft}s</span>
+                  </div>
+                  <h3>{currentWord.meaningJa}</h3>
+                  <p>
+                    Retention: {Math.round(currentWord.masteryScore * 100)}% |
+                    Pass: {currentWord.passCount} | Fail: {currentWord.failCount}
+                  </p>
+                  {wordFeedback ? (
+                    <div
+                      className={
+                        wordFeedback.result === "pass"
+                          ? "word-feedback correct"
+                          : "word-feedback incorrect"
+                      }
+                    >
+                      <strong>{wordFeedback.result === "pass" ? "〇 Correct" : "× Incorrect"}</strong>
+                      <span>
+                        {wordFeedback.meaningJa} = {wordFeedback.correctWord}
+                      </span>
+                    </div>
+                  ) : null}
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (wordTyping.trim() && !submittingWord) {
+                        void handleWordAttempt();
+                      }
+                    }}
+                  >
+                    <label className="field">
+                      <span className="field-label">
+                        Type the English word
+                        {wordFeedback ? (
+                          <strong
+                            className={
+                              wordFeedback.result === "pass"
+                                ? "label-feedback correct"
+                                : "label-feedback incorrect"
+                            }
+                          >
+                            {wordFeedback.result === "pass"
+                              ? "〇"
+                              : wordFeedback.result === "timeout"
+                                ? "⏰"
+                                : "×"}
+                          </strong>
+                        ) : null}
+                      </span>
+                      <input
+                        className="text-input"
+                        value={wordTyping}
+                        onChange={(event) => setWordTyping(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (
+                            (event.key === "Enter" || event.key === "NumpadEnter") &&
+                            !event.nativeEvent.isComposing &&
+                            wordTyping.trim() &&
+                            !submittingWord
+                          ) {
+                            event.preventDefault();
+                            void handleWordAttempt();
+                          }
+                        }}
+                        placeholder="type here"
+                      />
+                    </label>
+                  </form>
+                  <div className="choice-grid">
+                    {currentWord.choices.map((choice) => (
+                      <button
+                        key={`${currentWord.id}-${choice}`}
+                        className="secondary"
+                        onClick={() => void handleWordAttempt(undefined, choice)}
+                        disabled={submittingWord}
+                      >
+                        {choice}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="hero-actions">
+                    <button
+                      className="primary"
+                      onClick={() => void handleWordAttempt()}
+                      disabled={!wordTyping.trim() || submittingWord}
+                    >
+                      {submittingWord ? "Checking..." : "Submit typed answer"}
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => void handleWordAttempt("timeout")}
+                      disabled={submittingWord}
+                    >
+                      Skip
+                    </button>
+                  </div>
+                  <p className="panel-hint">
+                    Example sentence: {currentWord.example}
+                  </p>
+                </div>
+              ) : (
+                <p>All due words are done for now. Come back later for the next review cycle.</p>
+              )}
+            </article>
+
+            <article className="panel">
+              <p className="eyebrow">Word library</p>
+              <h3>Weakest office words first</h3>
+              <div className="stack">
+                {wordTraining.library.length === 0 ? (
+                  <p>No word cards loaded yet.</p>
+                ) : (
+                  wordTraining.library.map((card) => (
+                    <div key={card.id} className="history-card">
+                      <div>
+                        <strong>{card.word}</strong>
+                        <p>{card.meaningJa}</p>
+                        <p>
+                          Retention: {Math.round(card.masteryScore * 100)}% | Last:{" "}
+                          {card.lastResult}
+                        </p>
+                        <p>{card.category}</p>
+                      </div>
+                      <span className="score-pill">
+                        {card.isMastered ? "Mastered" : `${Math.round(card.masteryScore * 100)}%`}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </article>
+
             <article className="panel">
               <p className="eyebrow">Vocab notebook</p>
               <h2>Save unclear expressions for spaced review</h2>
